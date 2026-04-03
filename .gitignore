@@ -1,0 +1,59 @@
+# Unity generated folders
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+
+# Unity asset meta files should be included in version control
+# *.meta
+
+# Unity auto-generated VS/Rider project files
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.opendb
+*.VC.db
+
+# JetBrains Rider
+.idea/
+.idea/*
+
+# Visual Studio Code
+.vscode/
+
+# Visual Studio
+.vs/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Crash reports
+/crash.log
+/crash.dmp
+
+# Unity Cloud Build
+/AssetBundles/
+/StreamingAssets/aa/
+
+# Addressables build output
+/[Ss]tream[Ii]ng[Aa]ssets/aa/
+
+# Agent session logs (auto-generated)
+/production/session-state/pre-compact-*.md
+/production/session-state/agent-log.txt
