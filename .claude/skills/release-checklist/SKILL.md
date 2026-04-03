@@ -73,7 +73,7 @@ When this skill is invoked:
 - [ ] Screenshots: all required sizes
 - [ ] Trailer: uploaded
 - [ ] Short description: ≤ 80 characters
-- [ ] Long description: proofreaded, no placeholder text
+- [ ] Long description: proofread, no placeholder text
 
 ## Sign-Off
 - [ ] Technical Director sign-off
