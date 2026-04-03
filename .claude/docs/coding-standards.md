@@ -61,3 +61,24 @@ public void TakeDamage(float amount) { ... }
 - [ ] `[SerializeField] private` instead of `public` for inspector fields
 - [ ] Assembly definition exists for this folder
 - [ ] No LINQ in hot paths
+
+## Design Principles
+
+### SOLID
+- **Single Responsibility (SRP)**: each class has one reason to change — no monolithic MonoBehaviours
+- **Open/Closed (OCP)**: systems are extendable via interfaces/inheritance without modifying existing code
+- **Liskov Substitution (LSP)**: subtypes must be substitutable for their base types without breaking correctness
+- **Interface Segregation (ISP)**: prefer small, focused interfaces (`IDamageable`, `IInteractable`) over large ones
+- **Dependency Inversion (DIP)**: depend on abstractions (interfaces), not concretions — use DI or ScriptableObject events
+
+### KISS (Keep It Simple, Stupid)
+- Prefer the simplest solution that meets the requirements
+- Avoid over-engineering — do not add abstractions until they are needed
+- Favor readability over cleverness — code is read far more often than it is written
+- If a system can be expressed with a ScriptableObject and an event, do not build a framework
+
+### DRY (Don't Repeat Yourself)
+- Extract shared logic into utility methods or base classes
+- Reuse ScriptableObjects for common configuration data across systems
+- Use USS variables and shared Sub Graphs instead of duplicating shader/style values
+- If the same logic appears in 3+ places, refactor into a shared abstraction

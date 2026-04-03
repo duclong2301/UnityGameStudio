@@ -14,6 +14,16 @@ paths:
 - Document which design doc section each feature implements via XML doc comments
 - No static singletons for game state — use dependency injection or ScriptableObject events
 
+## Design Principles (SOLID, KISS, DRY)
+
+- **SRP**: each class has one responsibility — no monolithic MonoBehaviours handling movement, combat, and UI
+- **OCP**: extend systems via new interface implementations, not by modifying existing classes
+- **LSP**: any class implementing an interface (e.g., `IDamageable`) must be fully substitutable
+- **ISP**: keep interfaces small and focused — `IDamageable` and `IHealable` are separate, not one `IHealthManageable`
+- **DIP**: gameplay systems depend on abstractions (interfaces), not concrete implementations
+- **KISS**: prefer the simplest working solution — do not add patterns or layers until they are justified
+- **DRY**: extract repeated logic into shared utility methods or ScriptableObject-driven configurations
+
 ## Unity-Specific Rules
 
 - Cache `GetComponent<T>()` calls in `Awake()` — never call in `Update()`
