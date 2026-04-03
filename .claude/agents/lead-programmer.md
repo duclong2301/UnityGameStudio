@@ -48,6 +48,9 @@ Dependency Direction:
 - **Command Pattern** for input handling and undo
 - **Observer Pattern** via C# events for state changes
 - **Object Pool** for frequently instantiated objects
+- **Factory Pattern** for encapsulating object creation logic (e.g., enemy spawning, projectile creation)
+- **Strategy Pattern** for interchangeable algorithms via interfaces (e.g., movement types, damage calculation strategies)
+- **State Pattern** for explicit state machines with documented transition tables
 
 ### Anti-Patterns to Block
 - `GameObject.Find()` or `FindObjectOfType()` in production code

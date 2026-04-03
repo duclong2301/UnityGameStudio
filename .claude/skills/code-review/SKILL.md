@@ -39,11 +39,19 @@ When this skill is invoked:
    - [ ] Interfaces expose system contracts
 
 7. **Check SOLID compliance**:
-   - [ ] Single Responsibility: each class has one reason to change
-   - [ ] Open/Closed: extendable without modification (via interfaces/inheritance)
-   - [ ] Dependency Inversion: depends on abstractions, not concretions
+   - [ ] Single Responsibility (SRP): each class has one reason to change
+   - [ ] Open/Closed (OCP): extendable without modification (via interfaces/inheritance)
+   - [ ] Liskov Substitution (LSP): subtypes must be substitutable for their base types without altering correctness
+   - [ ] Interface Segregation (ISP): prefer small, focused interfaces over large monolithic ones
+   - [ ] Dependency Inversion (DIP): depends on abstractions, not concretions
 
-8. **Output the review** in this format:
+8. **Check KISS and DRY compliance**:
+   - [ ] KISS: no over-engineered abstractions — simplest solution that meets requirements
+   - [ ] KISS: no unnecessary complexity — favor readability over cleverness
+   - [ ] DRY: no duplicated logic across 3+ locations — extract shared abstractions
+   - [ ] DRY: configuration data reused via ScriptableObjects, not copy-pasted
+
+9. **Output the review** in this format:
 
 ```
 ## Code Review: [File/System Name]
@@ -55,7 +63,10 @@ When this skill is invoked:
 [List specific architectural concerns]
 
 ### SOLID: [COMPLIANT / ISSUES FOUND]
-[List specific violations]
+[List specific violations — check all 5 principles: SRP, OCP, LSP, ISP, DIP]
+
+### KISS & DRY: [COMPLIANT / ISSUES FOUND]
+[List over-engineering, unnecessary complexity, or duplicated logic]
 
 ### Performance Concerns
 [List allocations, GC issues, hot path problems]

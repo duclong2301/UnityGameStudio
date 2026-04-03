@@ -38,3 +38,28 @@
 
 - PC (Windows/Mac/Linux) — primary development target
 - Document additional platforms in `docs/engine-reference/unity/VERSION.md`
+
+## Mobile Game Development Patterns
+
+When targeting mobile (iOS/Android), apply these additional constraints:
+
+### Performance
+- Frame time budget: 33.33ms (30 FPS) — use `Application.targetFrameRate = 30`
+- Memory budget: < 512 MB total; < 200 MB for assets in memory
+- Draw calls: < 500 per frame — use GPU instancing, SRP Batcher, and atlas textures
+- Texture sizes: max 2048×2048; prefer compressed formats (ASTC for mobile)
+- Use `half` precision in shaders wherever possible
+
+### Mobile-Specific Patterns
+- **Touch Input Abstraction** — wrap touch/pointer input behind an interface for cross-platform support
+- **Asset Streaming** — use Addressables with remote catalogs for on-demand asset loading
+- **Battery-Aware Design** — reduce update frequency for background systems; use `OnApplicationPause()`
+- **Adaptive Quality** — implement quality tier switching at runtime based on device capability
+- **Offline-First Architecture** — cache data locally; sync when network is available
+
+### Mobile Anti-Patterns to Avoid
+- No `Update()` on idle UI screens — disable components when not visible
+- No unbounded particle systems — always set `maxParticles`
+- No real-time shadows on low-end devices — bake where possible
+- No `Camera.main` in `Update()` — cache the reference
+- Avoid `Instantiate`/`Destroy` loops — use Object Pooling exclusively
