@@ -97,10 +97,29 @@ GameStateManager.CurrentState = GameState.Play; // ❌ Không có setter
 
 Tuân thủ state flow chính xác:
 ```
-None → Init → Main → Ready → Play → {WaitComplete → Complete, WaitGameOver → GameOver, Restart, Revice}
-                                  ↓
-                                Next → Ready (load level mới)
+AppStart → None → Main (Bootstrap loads MainScene)
+                   │
+         user clicks Play → Init (GameplayController.InitGame)
+                               │
+                             Ready (countdown)
+                               │
+                             Play ─────────────────────────┐
+                            /    \                          │
+                    WaitComplete  WaitGameOver   Restart ───┘
+                         │              │
+                      Complete       GameOver
+                      /     \       /      \
+                   Next     Main  Revice   Main
+                    │              │
+                  Init ──────────Play
 ```
+
+**Quy tắc quan trọng:**
+- `None → Main`: Bootstrap load xong MainScene → `GameStateManager.Main()`
+- `Main → Init`: user click Play → `GameStateManager.Init()` → load GameplayScene
+- `Init → Ready`: `GameplayController.InitGame()` hoàn tất → `GameStateManager.Ready()`
+- `Ready → Play`: countdown xong → `GameStateManager.Play()`
+- `GameplayController` PHẢI check `CurrentState == GameState.Init` trong `OnEnable` (scene load SAU khi Init event fire)
 
 ### Best Practices
 
@@ -116,9 +135,9 @@ None → Init → Main → Ready → Play → {WaitComplete → Complete, WaitGa
 
 | State | Khi nào xảy ra |
 |-------|----------------|
-| `None` | App vừa khởi động |
-| `Init` | Đang load scene, spawn player |
-| `Main` | Ở menu chính / lobby |
+| `None` | App vừa khởi động (trước khi Bootstrap load xong) |
+| `Main` | Bootstrap load xong MainScene, hoặc quay lại menu |
+| `Init` | User click Play → GameplayController.InitGame() chạy |
 | `Ready` | Sẵn sàng chơi (countdown) |
 | `Play` | Gameplay active |
 | `Restart` | Chơi lại level |
