@@ -16,6 +16,26 @@ Each role owns a specific domain, enforcing separation of concerns and quality a
 - **UI Framework**: UI Toolkit (runtime); UGUI for world-space UI
 - **Networking**: Unity Netcode for GameObjects (NGO) + Unity Transport
 
+## Frameworks
+
+### GameFoundation Framework
+
+Custom Unity framework providing core systems for rapid game development:
+
+- **DataManager**: Binary serialization-based save/load system with extensible collections
+- **GameStateManager**: Application-level state machine managing game lifecycle (13 states: None → Init → Main → Ready → Play → Complete/GameOver/Restart/Next/Revice)
+- **UIManager**: SOLID-based UI layer management (Scene/Popup/Dialog/Toast/Loading layers)
+
+**Key principles:**
+- Event-driven architecture — systems communicate via events, not direct references
+- SOLID design — single responsibility, interface segregation, dependency inversion
+- Separation of concerns — DataManager ↮ GameStateManager ↮ UIManager are independent
+
+**Usage:**
+- See [GameFoundation README](.claude/docs/frameworks/gamefoundation/README.md) for integration guide
+- Code implementing GameFoundation automatically triggers [gamefoundation-code.instructions.md](.github/instructions/gamefoundation-code.instructions.md)
+- Data collections automatically trigger [gamefoundation-data.instructions.md](.github/instructions/gamefoundation-data.instructions.md)
+
 ## Core Principles
 
 ### SOLID

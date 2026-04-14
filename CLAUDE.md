@@ -13,6 +13,18 @@ Each agent owns a specific domain, enforcing separation of concerns and quality.
 - **Render Pipeline**: URP (Universal Render Pipeline) — default; HDRP for high-end projects
 - **UI Framework**: UI Toolkit (runtime); UGUI for world-space UI
 
+## Frameworks
+
+### GameFoundation Framework
+
+Custom Unity framework providing core systems for rapid game development:
+
+- **DataManager**: Binary serialization-based save/load system with extensible collections
+- **GameStateManager**: Application-level state machine managing game lifecycle
+- **UIManager**: SOLID-based UI layer management (Scene/Popup/Dialog/Toast/Loading)
+
+See `.claude/docs/frameworks/gamefoundation/README.md` for architecture and integration guide.
+
 ## Project Structure
 
 @.claude/docs/directory-structure.md

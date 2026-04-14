@@ -1,0 +1,16 @@
+{
+    "name": "{{PROJECT_NAMESPACE}}.Gameplay",
+    "rootNamespace": "{{PROJECT_NAMESPACE}}.Gameplay",
+    "references": [
+        "{{PROJECT_NAMESPACE}}.GameFoundation.StateMachine"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//e/unity//**)",
+      "Read(//c/Users/Long Tran/AppData/Roaming/UnityHub/**)"
+    ]
+  }
+}

@@ -1,0 +1,18 @@
+{
+    "name": "{{PROJECT_NAMESPACE}}.UI",
+    "rootNamespace": "{{PROJECT_NAMESPACE}}.UI",
+    "references": [
+        "{{PROJECT_NAMESPACE}}.GameFoundation.UI",
+        "{{PROJECT_NAMESPACE}}.GameFoundation.StateMachine",
+        "Unity.TextMeshPro"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
