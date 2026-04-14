@@ -7,7 +7,8 @@
 URP (Universal Render Pipeline)
 
 ## Target Platforms
-- PC (Windows, macOS, Linux) — primary
+- Android — primary
+- PC (Windows, macOS, Linux)
 - (Add additional platforms here)
 
 ## Key Packages

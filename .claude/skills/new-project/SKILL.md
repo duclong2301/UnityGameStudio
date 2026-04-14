@@ -35,6 +35,24 @@ If any answer is invalid, ask again before continuing.
 
 Wait for exit code 0. Verify `<StoragePath>/ProjectSettings/ProjectVersion.txt` exists. If create fails, stop and surface the log.
 
+## Phase 3.5 — Copy studio configuration into the new project
+
+Copy the studio's `.claude/`, `.github/`, and `docs/` directories from the current working directory (Unity Game Studio AI repo root) into `<StoragePath>/`, at the same level as the `Assets/` folder Unity just created.
+
+```bash
+cp -r ".claude"  "<StoragePath>/.claude"
+cp -r ".github"  "<StoragePath>/.github"
+cp -r "docs"     "<StoragePath>/docs"
+```
+
+Also copy `CLAUDE.md` to the project root:
+
+```bash
+cp "CLAUDE.md" "<StoragePath>/CLAUDE.md"
+```
+
+> **Why**: Every new product starts with the full set of Claude Code skills, agent definitions, hooks, coding standards, GitHub Copilot instructions, and architecture docs already in place. The team can run `/sprint-plan`, `/code-review`, and all other agent skills from day one without manual setup.
+
 ## Phase 4 — Patch `Packages/manifest.json`
 
 Merge these dependencies into `<StoragePath>/Packages/manifest.json` (use `Read` + `Edit`):
