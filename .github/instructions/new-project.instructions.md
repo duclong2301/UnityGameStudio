@@ -43,6 +43,22 @@ All template files use `{{PROJECT_NAMESPACE}}` as a placeholder.
 sed -i 's/{{PROJECT_NAMESPACE}}/MyNewGame/g' file.cs
 ```
 
+## Start-Packs (Auto-Import)
+
+Phase 5.5 copies Unity packages from `.claude/skills/new-project/start-packs/` into project's `Assets/ImportQueue/`.
+Phase 7's `ProjectScaffolder.cs` auto-imports them on first Unity Editor launch.
+
+**Currently bundled:**
+- **DOTween Pro** — Default tweening library for gameplay & UGUI animations
+  - Gameplay: object movement, camera effects, VFX (see gameplay-code.instructions.md)
+  - UGUI: panel transitions, fade, scale, color (see ui-code.instructions.md)
+  - NOT for physics-based movement or continuous Update() logic
+
+**Adding new start-packs:**
+1. Drop `.unitypackage` file into `.claude/skills/new-project/start-packs/`
+2. ProjectScaffolder will auto-detect and import on next `/new-project` run
+3. Update this doc and Phase 10 report with package name & purpose
+
 ## Template Directory Structure
 
 ```
