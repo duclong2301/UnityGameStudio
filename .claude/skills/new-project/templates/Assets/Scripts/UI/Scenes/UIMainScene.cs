@@ -21,7 +21,9 @@ namespace {{PROJECT_NAMESPACE}}.UI.Scenes
 
         private void OnPlayClicked()
         {
-            GameStateManager.Ready();
+            // Main → Init: signals gameplay systems to begin initialization.
+            // GameplayController will receive this via OnGameStateChanged or CurrentState check.
+            GameStateManager.Init();
             SceneManager.LoadScene(gameplaySceneName);
         }
 

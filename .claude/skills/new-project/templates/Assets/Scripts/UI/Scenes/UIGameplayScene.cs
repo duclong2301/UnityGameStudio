@@ -24,6 +24,7 @@ namespace {{PROJECT_NAMESPACE}}.UI.Scenes
             if (stateLabel == null) return;
             stateLabel.text = current switch
             {
+                GameState.Init  => "LOADING...",
                 GameState.Ready => "READY",
                 GameState.Play  => "PLAY",
                 _ => stateLabel.text,

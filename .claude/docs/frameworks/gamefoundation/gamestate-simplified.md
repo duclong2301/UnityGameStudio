@@ -57,9 +57,9 @@ public enum GameState
 
 | GameState | Mô tả | Khi nào xảy ra |
 |-----------|-------|-----------------|
-| `None` | Trạng thái mặc định ban đầu | Khi app vừa khởi động |
-| `Init` | Đang load scene gameplay, khởi tạo game objects và các hệ thống | `GameManager.InitGame()` gọi khi bắt đầu vào game |
-| `Main` | Ở màn hình chính/lobby | Khi quay về menu chính hoặc màn hình chọn level |
+| `None` | Trạng thái mặc định ban đầu | Khi app vừa khởi động, trước khi Bootstrap load xong MainScene |
+| `Main` | Ở màn hình chính/lobby | Ngay sau Bootstrap hoàn tất load MainScene, hoặc khi quay về menu |
+| `Init` | Đang load GameplayScene, khởi tạo game objects và các hệ thống | User click Play → `GameStateManager.Init()` → `GameplayController.InitGame()` |
 | `Ready` | Scene đã load xong, player đã sẵn sàng, countdown | Sau `Init` hoàn tất, trước khi cho phép chơi |
 | `Play` | Player đang chơi, thực hiện mục tiêu | Sau countdown kết thúc |
 | `Restart` | Yêu cầu chơi lại level hiện tại | Player chọn Restart từ UI Result |
@@ -169,71 +169,84 @@ GameStateManager.Main();                    // Quay về menu
                     └─────────────┬───────────────────────┘
                                   │
                                   ▼
-                         ┌────────────────┐
-                         │  GameState.None │
-                         └───────┬────────┘
+                         ┌─────────────────┐
+                         │  GameState.None  │  ← Default (app just launched)
+                         └────────┬────────┘
+                                  │
+                     Bootstrap loads MainScene
+                                  │
+                      GameStateManager.Main()
+                                  │
+                                  ▼
+                    ┌─────────────────────────┐
+                    │     GameState.Main       │  ← Main Menu / Lobby
+                    └────────────┬────────────┘
                                  │
+                    User clicks Play button
                     GameStateManager.Init()
+                    + SceneManager.LoadScene("GameplayScene")
                                  │
                                  ▼
-                    ┌────────────────────────┐
-                    │    GameState.Init       │  ← Load gameplay scene
-                    │  (GameManager.InitGame) │    Khởi tạo game objects
-                    └───────────┬────────────┘
-                                │
-                   GameStateManager.Ready()
-                                │
-                                ▼
-                    ┌────────────────────────┐
-                    │   GameState.Ready      │  ← ShowUI/Countdown
-                    └───────────┬────────────┘
-                                │
-                   GameStateManager.Play()
-                                │
-                                ▼
-               ┌────────────────────────────────────┐
-               │         GameState.Play              │  ← GAMEPLAY ACTIVE
-               └──┬──────────┬──────────┬──────┬────┘
-                  │          │          │      │
-         Điều kiện│  Điều kiện│    Quit  │      │ Load level mới
-            thắng │     thua  │   Level  │      │
-                  │          │          │      │
-                  ▼          ▼          │      ▼
-    ┌──────────────┐ ┌──────────────┐  │  ┌──────────────┐
-    │ WaitComplete │ │ WaitGameOver │  │  │ GameState     │
-    │ (stop game,  │ │ (stop game,  │  │  │   .Other      │
-    │  calc result)│ │  calc result)│  │  │ (loading...)  │
-    └──────┬───────┘ └──────┬───────┘  │  └──────┬───────┘
-           │                │          │         │
-     delay │          delay │          │    Khi load xong
-           ▼                ▼          │         │
-    ┌──────────────┐ ┌──────────────┐  │         ▼
-    │  Complete    │ │  GameOver    │  │    ┌──────────┐
-    │ (show UI    │ │ (show UI     │  │    │  Ready   │
-    │  win result)│ │  lose result)│  │    └────┬─────┘
-    └──┬───┬──────┘ └──┬────┬──────┘  │         │
-       │   │           │    │         │    Play()│
-  Next │   │Main   Revice  │Main     │         ▼
-       │   │           │    │         │    ┌─────────┐
-       ▼   │           ▼    │         │    │  Play   │
- ┌─────────┤    ┌──────────┐│         │    └─────────┘
- │  Next   │    │  Revice  ││         │
- │(next lv)│    │(continue)││         │
- └────┬────┘    └────┬─────┘│         │
-      │              │      │         │
-      │         Play()│      │         │
-      │              ▼      │         │
-      │         ┌────────┐  │         │
-      │         │  Play  │  │         │
-      │         └────────┘  │         │
-      │                     │         │
-      ▼                     ▼         │
- ┌──────────────────────────────┐     │
- │        GameState.Main        │◄────┘
- │   (lobby / main menu)       │
- └──────────────┬───────────────┘
+                    ┌─────────────────────────┐
+                    │     GameState.Init       │  ← GameplayScene loads
+                    │   (GameplayController    │     GameplayController.InitGame()
+                    │     .InitGame runs)      │     spawn objects, load data, etc.
+                    └────────────┬────────────┘
+                                 │
+                    InitGame complete
+                    GameStateManager.Ready()
+                                 │
+                                 ▼
+                    ┌─────────────────────────┐
+                    │     GameState.Ready      │  ← UI shows "READY" / countdown
+                    └────────────┬────────────┘
+                                 │
+                    Countdown done (default 1s)
+                    GameStateManager.Play()
+                                 │
+                                 ▼
+               ┌─────────────────────────────────────┐
+               │          GameState.Play              │  ← GAMEPLAY ACTIVE
+               └──┬──────────┬──────────┬───────┬────┘
+                  │          │          │       │
+         Điều kiện│  Điều kiện│  Restart │       │ Load level mới
+            thắng │     thua  │          │       │
+                  │          │          │       │
+                  ▼          ▼          ▼       ▼
+    ┌──────────────┐ ┌──────────────┐ ┌────┐ ┌──────────────┐
+    │ WaitComplete │ │ WaitGameOver │ │Init│ │ GameState     │
+    │ (stop game,  │ │ (stop game,  │ └──┬─┘ │   .Other      │
+    │  calc result)│ │  calc result)│    │   │ (loading...)  │
+    └──────┬───────┘ └──────┬───────┘    │   └──────┬───────┘
+           │                │        InitGame   Khi load xong
+     delay │          delay │            │           │
+           ▼                ▼            ▼           ▼
+    ┌──────────────┐ ┌──────────────┐ ┌──────────┐ ┌──────────┐
+    │  Complete    │ │  GameOver    │ │  Ready   │ │  Ready   │
+    │ (show UI     │ │ (show UI     │ └────┬─────┘ └────┬─────┘
+    │  win result) │ │  lose result)│      │Play()       │Play()
+    └──┬───┬───────┘ └──┬────┬──────┘      ▼            ▼
+       │   │            │    │          ┌──────┐    ┌──────┐
+  Next │   │ Main   Revice  │ Main     │ Play │    │ Play │
+       │   │            │    │          └──────┘    └──────┘
+       ▼   │            ▼    │
+ ┌─────────┤     ┌──────────┐│
+ │  Next   │     │  Revice  ││
+ │(next lv)│     │(continue)││
+ └────┬────┘     └────┬─────┘│
+      │               │Play() │
+      │               ▼       │
+      │          ┌────────┐   │
+      │          │  Play  │   │
+      │          └────────┘   │
+      ▼                       ▼
+ ┌──────────────────────────────────┐
+ │         GameState.Main           │
+ │     (lobby / main menu)          │
+ └──────────────┬───────────────────┘
                 │
-           Init() ──→ (quay lại đầu)
+        User clicks Play again
+        GameStateManager.Init() ──→ (quay lại Init)
 ```
 
 ---
@@ -295,7 +308,7 @@ Các component chính lắng nghe `GameStateManager.OnGameStateChanged`:
 
 Lớp Game Foundation của V06 được xây dựng trên:
 
-1. **GameStateManager (static)** — điều phối toàn bộ vòng đời ứng dụng với 13 trạng thái, từ khởi động (`None` → `Init`) đến gameplay (`Ready` → `Play`) đến kết thúc level (`WaitComplete`/`WaitGameOver` → `Complete`/`GameOver`). Kiến trúc này phù hợp với mọi thể loại game: casual, puzzle, action, RPG, racing, v.v.
+1. **GameStateManager (static)** — điều phối toàn bộ vòng đời ứng dụng với 13 trạng thái. Flow chính: `None` → `Main` (Bootstrap) → `Init` (user click Play, `GameplayController.InitGame()`) → `Ready` (countdown) → `Play` (gameplay) → `WaitComplete`/`WaitGameOver` → `Complete`/`GameOver`. Kiến trúc này phù hợp với mọi thể loại game: casual, puzzle, action, RPG, racing, v.v.
 2. **Event-driven architecture** — giao tiếp thông qua `OnGameStateChanged` event, giảm coupling giữa các component.
 3. **GameStateListeners** — component Inspector-friendly cho phép designer cấu hình phản ứng với state mà không cần code.
 4. **Data passing** — mỗi transition hỗ trợ truyền `object data` để cung cấp ngữ cảnh cho listener.

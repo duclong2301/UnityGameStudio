@@ -17,7 +17,7 @@ namespace {{PROJECT_NAMESPACE}}.GameFoundation.Bootstrap
 
         private void Start()
         {
-            GameStateManager.Init();
+            // None → Main directly. Init is triggered by the user (e.g. clicking Play).
             StartCoroutine(LoadMain());
         }
 
