@@ -10,12 +10,23 @@ When this skill is invoked, orchestrate the full GameFoundation project bootstra
 
 ## Phase 1 — Detect local Unity installs
 
-Run `bash .claude/skills/new-project/detect-unity.sh` to list installed Unity editors. The script scans (in order):
-1. `E:\unity\<version>\Editor\Unity.exe` (custom location detected on this machine)
-2. `C:\Program Files\Unity\Hub\Editor\<version>\Editor\Unity.exe`
-3. Any path listed in `%APPDATA%\UnityHub\secondaryInstallPath.json`
+Invoke the `unity-local-controller` skill to detect all installed Unity versions:
 
-Output format: one line per version `<version>\t<absolute path to Unity.exe>`.
+```bash
+/unity-local-controller
+```
+
+This presents an interactive menu of detected installations. The skill scans (in order):
+1. `E:\unity\<version>\Editor\Unity.exe` (custom location detected on this machine)
+2. `C:\Program Files\Unity\Hub\Editor\<version>\Editor\Unity.exe` (Unity Hub default)
+3. Any path listed in `%APPDATA%\UnityHub\secondaryInstallPath.json` (secondary installations)
+
+When invoked, the skill displays:
+- Unity version (e.g., `2023.2.20f1`)
+- Installation path
+- Install type (Custom / Hub Default / Secondary)
+
+The detection results are used in Phase 2 to present version options to the user via AskUserQuestion.
 
 ## Phase 2 — Collect user input (use AskUserQuestion)
 
@@ -78,9 +89,17 @@ Copy every file under `.claude/skills/new-project/templates/Assets/` into `<Stor
 Files produced under `Assets/Scripts/Core/GameFoundation/`:
 - `DataManager/` — `SaveData.cs`, `ISavableCollection.cs`, `CollectionDataSave.cs`, `GameData.cs`, `GameConfig.cs`, `UserData.cs`, `DataManager.cs`
 - `GameState/` — `GameState.cs`, `GameStateManager.cs`
-- `UI/Core/` — `UILayer.cs`, `IUIAnim.cs`, `UIBase.cs`, `UISceneBase.cs`, `UIPopupBase.cs`, `UILoadingBase.cs`, `UIManager.cs`
-- `Bootstrap/Bootstrap.cs`
+- `UI/` — `UILayer.cs`, `IUIAnim.cs`, `UIBase.cs`, `UISceneBase.cs`, `UIPopupBase.cs`, `UILoadingBase.cs`, `UIManager.cs`
+- `Bootstrap/` — `Bootstrap.cs`, `BootstrapConfig.cs`, `BootstrapContext.cs`, `BootstrapPipeline.cs`, `IBootstrapModule.cs`
 - Each folder gets its own `.asmdef`.
+
+> The `Bootstrap` system is module-driven: `BootstrapConfig` is a serialized
+> list of `ModuleProvider` entries (prefab or ScriptableObject modules) plus
+> `firstSceneName`, `minLoadingTime`, and retry options. `BootstrapPipeline`
+> runs `IBootstrapModule.InitializeAsync` in priority order; each module
+> first calls `FindObjectOfType<T>()` and falls back to instantiating from a
+> prefab field if not found (singleton-safe). See
+> `Assets/GameFoundation/Bootstrap/SINGLETON_MANAGERS.md` for the pattern.
 
 ## Phase 5.5 — Copy start-packs to ImportQueue
 
@@ -105,12 +124,47 @@ Copy `templates/Assets/Scripts/UI/` containing:
 
 Scenes are NOT authored as raw `.unity` YAML by the skill — shipping YAML with correct MonoScript GUIDs is fragile. Instead, `Assets/Editor/ProjectScaffolder.cs` (copied in Phase 5) uses `[InitializeOnLoad]` + `EditorPrefs` marker to run once on the first domain reload after Unity opens the project. It programmatically:
 
-**Scene creation:**
-- `Assets/Scenes/LoadingScene.unity` — Canvas + `UILoadingScene` + `[SystemBootstrap]` (Bootstrap) + `[UIManager]` (with `PopupSettings` as child).
-- `Assets/Scenes/MainScene.unity` — Canvas + `UIMainScene` with wired-up `PlayButton` + `SettingsButton`.
-- `Assets/Scenes/GameplayScene.unity` — Canvas + `UIGameplayScene` + `[GameplayController]` with wired `StateLabel`.
+**Scene creation** (hierarchies verified against the live project via Unity MCP):
 
-Then registers all three in `EditorBuildSettings.scenes` in the correct order.
+`Assets/Scenes/LoadingScene.unity`
+```
+EventSystem                           (EventSystem + StandaloneInputModule)
+LoadingCanvas                         (Canvas ScreenSpaceOverlay, 1920×1080, match 0.5)
+└── UILoadingScene                    (RectTransform + UILoadingScene)
+    ├── Background                    (Image, color ≈ 0.05,0.05,0.1)
+    └── LoadingLabel                  (TextMeshProUGUI "Loading...", size 48)
+[SystemBootstrap]                     (Bootstrap — drives BootstrapPipeline)
+```
+> `[UIManager]` and `DataManager` are **not** authored into the scene by
+> the scaffolder — they are registered as modules in `BootstrapConfig`
+> (`[UIManager]` from `Assets/GameFoundation/UI/[UIManager].prefab`,
+> `DataManager` from a scene instance or prefab). The user can still add
+> `DataManager` to LoadingScene manually and Bootstrap will reuse it
+> (`FindObjectOfType` → `useExistingInstance = true`).
+
+`Assets/Scenes/MainScene.unity`
+```
+EventSystem
+MainCanvas
+└── UIMainScene                       (RectTransform + UIMainScene)
+    ├── Background                    (Image, color ≈ 0.15,0.15,0.2)
+    ├── Title                         (TMP "MAIN MENU", size 72)
+    ├── PlayButton                    (Image+Button, wired via reflection)
+    └── SettingsButton                (Image+Button, wired via reflection)
+```
+
+`Assets/Scenes/GameplayScene.unity`
+```
+EventSystem
+GameplayCanvas
+└── UIGameplayScene                   (RectTransform + UIGameplayScene)
+    ├── Background                    (Image, color ≈ 0.1,0.2,0.1)
+    └── StateLabel                    (TMP "READY", size 120, wired via reflection)
+[GameplayController]                  (GameplayController)
+```
+
+Then registers all three in `EditorBuildSettings.scenes` in the correct order
+(Loading → Main → Gameplay).
 
 **TextMeshPro Essential Resources import:**
 After scene creation, imports TMP Essential Resources (fonts, shaders, atlases) via:

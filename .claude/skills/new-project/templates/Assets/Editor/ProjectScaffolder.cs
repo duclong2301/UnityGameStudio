@@ -9,9 +9,8 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using TMPro;
 using {{PROJECT_NAMESPACE}}.GameFoundation.Bootstrap;
-using {{PROJECT_NAMESPACE}}.GameFoundation.UI;
+using {{PROJECT_NAMESPACE}}.GameFoundation.Data;
 using {{PROJECT_NAMESPACE}}.UI.Scenes;
-using {{PROJECT_NAMESPACE}}.UI.Popups;
 using {{PROJECT_NAMESPACE}}.Gameplay;
 
 namespace {{PROJECT_NAMESPACE}}.EditorTools
@@ -21,6 +20,35 @@ namespace {{PROJECT_NAMESPACE}}.EditorTools
     /// GameFoundation scenes (LoadingScene, MainScene, GameplayScene), registers them in
     /// EditorBuildSettings, imports TMP Essential Resources, and imports any .unitypackage
     /// files found in Assets/ImportQueue/. Safe to re-run — skips scenes that already exist.
+    ///
+    /// Scene contracts (verified against the live PuzzleBallSort project hierarchy):
+    ///
+    ///   LoadingScene
+    ///   ├── EventSystem
+    ///   ├── LoadingCanvas
+    ///   │   └── UILoadingScene  (UIBase, Layer=Loading)
+    ///   │       ├── Background  (Image, dark)
+    ///   │       ├── LoadingLabel (TMP "Loading...") — wired to statusLabel
+    ///   │       └── Slider       (Unity default UI slider) — wired to progressBar
+    ///   │           ├── Background
+    ///   │           ├── Fill Area
+    ///   │           │   └── Fill
+    ///   │           └── Handle Slide Area
+    ///   │               └── Handle
+    ///   ├── [SystemBootstrap]  (Bootstrap)
+    ///   ├── Camera             (default Unity camera)
+    ///   └── DataManager        (singleton — Bootstrap finds via FindObjectOfType)
+    ///
+    ///   MainScene
+    ///   └── Camera             (intentionally minimal — game-specific UI lives here)
+    ///
+    ///   GameplayScene
+    ///   ├── EventSystem
+    ///   ├── [GameplayController]
+    ///   └── Camera             (intentionally minimal — game-specific UI lives here)
+    ///
+    /// MainScene/GameplayScene UI is intentionally NOT scaffolded; teams add scene-specific
+    /// content. The Bootstrap pipeline drives state transitions regardless of UI presence.
     /// </summary>
     [InitializeOnLoad]
     public static class ProjectScaffolder
@@ -56,11 +84,7 @@ namespace {{PROJECT_NAMESPACE}}.EditorTools
             RegisterScenes(loading, main, gameplay);
             AssetDatabase.SaveAssets();
 
-            // Import TMP Essential Resources so TMP components work out of the box.
-            // Must happen after scene save so AssetDatabase is in a clean state.
             EditorApplication.delayCall += ImportTMPEssentials;
-
-            // Import any .unitypackage files dropped in Assets/ImportQueue/.
             EditorApplication.delayCall += ImportStartPacks;
 
             EditorPrefs.SetBool(MarkerKey, true);
@@ -71,7 +95,6 @@ namespace {{PROJECT_NAMESPACE}}.EditorTools
 
         private static void ImportTMPEssentials()
         {
-            // Try the documented API first; fall back to the menu item if unavailable.
             var utilType = System.Type.GetType(
                 "TMPro.TMP_PackageUtilities, Unity.TextMeshPro.Editor");
             if (utilType != null)
@@ -87,7 +110,6 @@ namespace {{PROJECT_NAMESPACE}}.EditorTools
                 }
             }
 
-            // Fallback: trigger via menu item (opens a progress dialog but is reliable).
             EditorApplication.ExecuteMenuItem("Window/TextMeshPro/Import TMP Essential Resources");
             Debug.Log("[{{PROJECT_NAMESPACE}}] TMP Essential Resources import triggered via menu.");
         }
@@ -105,9 +127,8 @@ namespace {{PROJECT_NAMESPACE}}.EditorTools
 
             foreach (var pkg in packages)
             {
-                // ImportPackage path must be relative to the project root or absolute.
                 var absPath = Path.GetFullPath(pkg);
-                AssetDatabase.ImportPackage(absPath, false); // false = non-interactive
+                AssetDatabase.ImportPackage(absPath, false);
                 Debug.Log($"[{{PROJECT_NAMESPACE}}] Imported start-pack: {Path.GetFileName(pkg)}");
             }
 
@@ -131,62 +152,40 @@ namespace {{PROJECT_NAMESPACE}}.EditorTools
         private static void BuildLoadingScene(UnityEngine.SceneManagement.Scene scene)
         {
             CreateEventSystem();
+
             var canvas = CreateCanvas("LoadingCanvas");
             var ui = new GameObject("UILoadingScene", typeof(RectTransform), typeof(UILoadingScene));
             ui.transform.SetParent(canvas.transform, false);
+            StretchFull((RectTransform)ui.transform);
             AddFullscreenImage(ui.transform, new Color(0.05f, 0.05f, 0.1f, 1f));
-            AddLabel(ui.transform, "LoadingLabel", "Loading...", 48, new Vector2(0, 60));
 
-            var bootstrap = new GameObject("[SystemBootstrap]", typeof(Bootstrap));
-            bootstrap.GetComponent<Bootstrap>();
+            var statusLabel = AddLabel(ui.transform, "LoadingLabel", "Loading...", 48, new Vector2(0, 60));
+            var slider      = CreateProgressSlider(ui.transform, new Vector2(0, -120), new Vector2(800, 40));
 
-            // UIManager + Popup registry lives here so it persists across scenes.
-            var uiMgr = new GameObject("[UIManager]", typeof(UIManager));
-            var popupRoot = new GameObject("PopupSettings", typeof(RectTransform), typeof(PopupSettings));
-            popupRoot.transform.SetParent(uiMgr.transform, false);
-            AddFullscreenImage(popupRoot.transform, new Color(0f, 0f, 0f, 0.7f));
-            AddLabel(popupRoot.transform, "Title", "Settings", 42, new Vector2(0, 120));
-            var closeBtn = AddButton(popupRoot.transform, "CloseButton", "Close", new Vector2(0, -80));
-            var popup = popupRoot.GetComponent<PopupSettings>();
-            var closeField = typeof(PopupSettings).GetField("closeButton",
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            closeField?.SetValue(popup, closeBtn);
+            var sceneComp = ui.GetComponent<UILoadingScene>();
+            var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            typeof(UILoadingScene).GetField("progressBar", flags)?.SetValue(sceneComp, slider);
+            typeof(UILoadingScene).GetField("statusLabel", flags)?.SetValue(sceneComp, statusLabel);
+
+            new GameObject("[SystemBootstrap]", typeof(Bootstrap));
+            CreateCamera("Camera");
+
+            // DataManager singleton lives here so Bootstrap's FindObjectOfType picks it up.
+            // See Assets/GameFoundation/Bootstrap/SINGLETON_MANAGERS.md.
+            new GameObject("DataManager", typeof(DataManager));
         }
 
         private static void BuildMainScene(UnityEngine.SceneManagement.Scene scene)
         {
-            CreateEventSystem();
-            var canvas = CreateCanvas("MainCanvas");
-            var ui = new GameObject("UIMainScene", typeof(RectTransform), typeof(UIMainScene));
-            ui.transform.SetParent(canvas.transform, false);
-            AddFullscreenImage(ui.transform, new Color(0.15f, 0.15f, 0.2f, 1f));
-            AddLabel(ui.transform, "Title", "MAIN MENU", 72, new Vector2(0, 180));
-
-            var playBtn     = AddButton(ui.transform, "PlayButton",     "Play",     new Vector2(0,    0));
-            var settingsBtn = AddButton(ui.transform, "SettingsButton", "Settings", new Vector2(0, -140));
-
-            var sceneComp = ui.GetComponent<UIMainScene>();
-            var t = typeof(UIMainScene);
-            var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
-            t.GetField("playButton",     flags)?.SetValue(sceneComp, playBtn);
-            t.GetField("settingsButton", flags)?.SetValue(sceneComp, settingsBtn);
+            // MainScene is intentionally minimal — game-specific menu UI is added by the team.
+            CreateCamera("Camera");
         }
 
         private static void BuildGameplayScene(UnityEngine.SceneManagement.Scene scene)
         {
             CreateEventSystem();
-            var canvas = CreateCanvas("GameplayCanvas");
-            var ui = new GameObject("UIGameplayScene", typeof(RectTransform), typeof(UIGameplayScene));
-            ui.transform.SetParent(canvas.transform, false);
-            AddFullscreenImage(ui.transform, new Color(0.1f, 0.2f, 0.1f, 1f));
-            var label = AddLabel(ui.transform, "StateLabel", "READY", 120, Vector2.zero);
-
-            var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
-            typeof(UIGameplayScene)
-                .GetField("stateLabel", flags)
-                ?.SetValue(ui.GetComponent<UIGameplayScene>(), label);
-
             new GameObject("[GameplayController]", typeof(GameplayController));
+            CreateCamera("Camera");
         }
 
         // ─── Helpers ──────────────────────────────────────────────────────────
@@ -194,6 +193,18 @@ namespace {{PROJECT_NAMESPACE}}.EditorTools
         private static GameObject CreateEventSystem()
         {
             return new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
+        }
+
+        private static Camera CreateCamera(string name)
+        {
+            var go = new GameObject(name, typeof(Camera));
+            var cam = go.GetComponent<Camera>();
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = new Color(0.192f, 0.302f, 0.475f, 0f);
+            cam.nearClipPlane = 0.3f;
+            cam.farClipPlane = 1000f;
+            cam.fieldOfView = 60f;
+            return cam;
         }
 
         private static Canvas CreateCanvas(string name)
@@ -209,13 +220,17 @@ namespace {{PROJECT_NAMESPACE}}.EditorTools
             return canvas;
         }
 
+        private static void StretchFull(RectTransform rt)
+        {
+            rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+        }
+
         private static void AddFullscreenImage(Transform parent, Color color)
         {
             var go = new GameObject("Background", typeof(RectTransform), typeof(Image));
             go.transform.SetParent(parent, false);
-            var rt = (RectTransform)go.transform;
-            rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
-            rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+            StretchFull((RectTransform)go.transform);
             go.GetComponent<Image>().color = color;
         }
 
@@ -234,27 +249,63 @@ namespace {{PROJECT_NAMESPACE}}.EditorTools
             return t;
         }
 
-        private static Button AddButton(Transform parent, string name, string label,
-            Vector2 anchoredPos)
+        // Builds a Unity-standard UI Slider hierarchy:
+        //   Slider [Slider+Image]
+        //   ├── Background           [Image]
+        //   ├── Fill Area            [RectTransform]
+        //   │   └── Fill             [Image]
+        //   └── Handle Slide Area    [RectTransform]
+        //       └── Handle           [Image]
+        private static Slider CreateProgressSlider(Transform parent, Vector2 anchoredPos, Vector2 size)
         {
-            var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button));
-            go.transform.SetParent(parent, false);
-            var rt = (RectTransform)go.transform;
-            rt.sizeDelta = new Vector2(360, 100);
-            rt.anchoredPosition = anchoredPos;
-            go.GetComponent<Image>().color = new Color(0.25f, 0.45f, 0.8f, 1f);
+            var sliderGo = new GameObject("Slider", typeof(RectTransform), typeof(Image), typeof(Slider));
+            sliderGo.transform.SetParent(parent, false);
+            var sliderRt = (RectTransform)sliderGo.transform;
+            sliderRt.sizeDelta = size;
+            sliderRt.anchoredPosition = anchoredPos;
+            sliderGo.GetComponent<Image>().color = new Color(0.15f, 0.15f, 0.2f, 1f);
 
-            var labelGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
-            labelGo.transform.SetParent(go.transform, false);
-            var labelRt = (RectTransform)labelGo.transform;
-            labelRt.anchorMin = Vector2.zero; labelRt.anchorMax = Vector2.one;
-            labelRt.offsetMin = Vector2.zero; labelRt.offsetMax = Vector2.zero;
-            var tmp = labelGo.GetComponent<TextMeshProUGUI>();
-            tmp.text = label;
-            tmp.fontSize = 42;
-            tmp.alignment = TextAlignmentOptions.Center;
+            var bg = new GameObject("Background", typeof(RectTransform), typeof(Image));
+            bg.transform.SetParent(sliderGo.transform, false);
+            var bgRt = (RectTransform)bg.transform;
+            bgRt.anchorMin = new Vector2(0f, 0.25f); bgRt.anchorMax = new Vector2(1f, 0.75f);
+            bgRt.offsetMin = Vector2.zero; bgRt.offsetMax = Vector2.zero;
+            bg.GetComponent<Image>().color = new Color(0.2f, 0.2f, 0.25f, 1f);
 
-            return go.GetComponent<Button>();
+            var fillArea = new GameObject("Fill Area", typeof(RectTransform));
+            fillArea.transform.SetParent(sliderGo.transform, false);
+            var faRt = (RectTransform)fillArea.transform;
+            faRt.anchorMin = new Vector2(0f, 0.25f); faRt.anchorMax = new Vector2(1f, 0.75f);
+            faRt.offsetMin = new Vector2(5f, 0f);   faRt.offsetMax = new Vector2(-15f, 0f);
+
+            var fill = new GameObject("Fill", typeof(RectTransform), typeof(Image));
+            fill.transform.SetParent(fillArea.transform, false);
+            var fillRt = (RectTransform)fill.transform;
+            fillRt.anchorMin = Vector2.zero; fillRt.anchorMax = Vector2.one;
+            fillRt.offsetMin = new Vector2(-5f, 0f); fillRt.offsetMax = new Vector2(5f, 0f);
+            fill.GetComponent<Image>().color = new Color(0.25f, 0.6f, 0.9f, 1f);
+
+            var handleArea = new GameObject("Handle Slide Area", typeof(RectTransform));
+            handleArea.transform.SetParent(sliderGo.transform, false);
+            var haRt = (RectTransform)handleArea.transform;
+            haRt.anchorMin = Vector2.zero; haRt.anchorMax = Vector2.one;
+            haRt.offsetMin = new Vector2(10f, 0f); haRt.offsetMax = new Vector2(-10f, 0f);
+
+            var handle = new GameObject("Handle", typeof(RectTransform), typeof(Image));
+            handle.transform.SetParent(handleArea.transform, false);
+            var handleRt = (RectTransform)handle.transform;
+            handleRt.sizeDelta = new Vector2(20f, 0f);
+            handle.GetComponent<Image>().color = Color.white;
+
+            var slider = sliderGo.GetComponent<Slider>();
+            slider.targetGraphic = handle.GetComponent<Image>();
+            slider.fillRect      = fillRt;
+            slider.handleRect    = handleRt;
+            slider.direction     = Slider.Direction.LeftToRight;
+            slider.minValue      = 0f;
+            slider.maxValue      = 1f;
+            slider.value         = 0f;
+            return slider;
         }
 
         private static void RegisterScenes(params string[] scenePaths)
