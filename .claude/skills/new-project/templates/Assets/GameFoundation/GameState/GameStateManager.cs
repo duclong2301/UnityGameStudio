@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace {{PROJECT_NAMESPACE }}.GameFoundation.StateMachine
+namespace {{PROJECT_NAMESPACE}}.GameFoundation.StateMachine
 {
     /// <summary>
     /// Global application state machine. Static, event-driven. Subscribers listen to

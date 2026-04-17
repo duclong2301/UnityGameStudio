@@ -54,6 +54,8 @@ Copy the studio's `.claude/`, `.github/`, and `docs/` directories from the curre
 cp -r ".claude"  "<StoragePath>/.claude"
 cp -r ".github"  "<StoragePath>/.github"
 cp -r "docs"     "<StoragePath>/docs"
+# Remove start-packs from the project copy — the new project won't run /new-project itself
+rm -rf "<StoragePath>/.claude/skills/new-project/start-packs"
 ```
 
 Also copy `CLAUDE.md` to the project root:
@@ -66,25 +68,82 @@ cp "CLAUDE.md" "<StoragePath>/CLAUDE.md"
 
 ## Phase 4 — Patch `Packages/manifest.json`
 
-Merge these dependencies into `<StoragePath>/Packages/manifest.json` (use `Read` + `Edit`):
-- `com.unity.render-pipelines.universal` (if URP)
-- `com.unity.render-pipelines.high-definition` (if HDRP)
-- `com.unity.inputsystem`
-- `com.unity.addressables`
-- `com.unity.textmeshpro`
-- `com.unity.cinemachine`
-- `com.unity.ai.assistant` — **Unity MCP bridge** (Unity 6 / version ≥ 6000.0 only; skip for 2022.x)
+Merge these dependencies into `<StoragePath>/Packages/manifest.json` (use `Read` + `Edit`).
+Use the version table below — do **not** use `"latest"` (UPM does not support it).
 
-Use `"latest"` for the version (Unity resolves on first open) or the concrete version from a known-good lock file.
+| Package | Unity 2022.x LTS | Unity 6 (6000.x) |
+|---|---|---|
+| `com.unity.render-pipelines.universal` | `14.0.11` | `17.0.3` |
+| `com.unity.render-pipelines.high-definition` | `14.0.11` | `17.0.3` |
+| `com.unity.inputsystem` | `1.7.0` | `1.9.0` |
+| `com.unity.addressables` | `1.21.21` | `2.3.1` |
+| `com.unity.textmeshpro` | `3.0.9` | `3.0.9` |
+| `com.unity.cinemachine` | `2.9.7` | `3.1.1` |
+| `com.unity.ai.assistant` | *(skip — Unity 6 only)* | `2.6.0-pre1` |
+
+Add only URP **or** HDRP (based on Phase 2 selection). Skip `com.unity.ai.assistant` for Unity 2022.x.
 
 > **Unity MCP note**: `com.unity.ai.assistant` installs the MCP server inside the Unity Editor.
 > After the project is first opened in Unity Hub, the user can go to
 > `Edit > Project Settings > AI > Unity MCP` → click **Start** to activate the bridge.
 > Claude Code then communicates with Unity via the relay binary at `%USERPROFILE%\.unity\relay\relay_win.exe`.
 
+## Phase 4.5 — Copy start-packs to ImportQueue
+
+Copy every `.unitypackage` file from `.claude/skills/new-project/start-packs/` into `<StoragePath>/Assets/ImportQueue/` (create the folder if needed). Use `cp` with quoted paths to handle filenames with spaces.
+
+```bash
+mkdir -p "<StoragePath>/Assets/ImportQueue"
+shopt -s nullglob
+packages=(".claude/skills/new-project/start-packs/"*.unitypackage)
+if [ ${#packages[@]} -gt 0 ]; then
+  cp "${packages[@]}" "<StoragePath>/Assets/ImportQueue/"
+  echo "Copied ${#packages[@]} start-pack(s) to ImportQueue"
+else
+  echo "No start-packs found — ImportQueue will be empty"
+fi
+```
+
+These packages are auto-imported by `ProjectScaffolder` on the domain reload triggered by Phase 5 file copy (see Phase 7). Currently bundled:
+- **DOTween Pro** — tweening library
+
+> **Why here**: start-packs must exist in `Assets/ImportQueue/` **before** `ProjectScaffolder.cs` is compiled so they are available when it runs.
+
+## Phase 4.6 — Launch Unity Editor + wait for package import
+
+Use the `/unity-local-controller` skill to automatically open the newly created project in Unity Editor:
+
+```bash
+/unity-local-controller launch <StoragePath>
+```
+
+This command:
+- Detects the Unity version specified in `<StoragePath>/ProjectSettings/ProjectVersion.txt`
+- Finds the matching Unity Editor executable from the local installations
+- Launches Unity Editor with the project path
+- Unity resolves and imports all packages listed in `manifest.json` (URP/HDRP, InputSystem, Addressables, TextMeshPro, Cinemachine, Unity MCP)
+
+The skill returns immediately after launching Unity — the import process runs in the background.
+
+Inform the user:
+> "Unity Editor is launching with your new project at `<StoragePath>`. Initial import includes all manifest packages (URP, TMP, Addressables…). This takes 5–15 minutes. **Please wait until Unity shows 'Compilation finished' in the Console before continuing.**"
+
+Wait for user confirmation that Unity has finished importing before proceeding to Phase 5.
+
+> **Why here**: by opening Unity before copying GameFoundation templates, all package dependencies (TMP, DOTween, etc.) are fully installed before Unity tries to compile the game code. This prevents compile errors on first open.
+
 ## Phase 5 — Copy GameFoundation code templates
 
-Copy every file under `.claude/skills/new-project/templates/Assets/` into `<StoragePath>/Assets/`, preserving directory structure. Replace the token `{{PROJECT_NAMESPACE}}` inside every `.cs` and `.asmdef` file with the project name from Phase 2.
+Copy every file under `.claude/skills/new-project/templates/Assets/` into `<StoragePath>/Assets/`, preserving directory structure. Replace the token `{{PROJECT_NAMESPACE}}` inside every `.cs` and `.asmdef` file with the project name from Phase 2 using:
+
+```bash
+find "<StoragePath>/Assets" \( -name "*.cs" -o -name "*.asmdef" \) | while read f; do
+  sed -i "s/\[{{PROJECT_NAMESPACE}}\]/<ProjectName>/g;
+          s/{{PROJECT_NAMESPACE}}/<ProjectName>/g" "$f"
+done
+```
+
+Both patterns must be replaced: `[{{PROJECT_NAMESPACE}}]` (used in namespaces, menu paths, MarkerKey) and `{{PROJECT_NAMESPACE}}` (used in string literals and log messages).
 
 Files produced under `Assets/Scripts/Core/GameFoundation/`:
 - `DataManager/` — `SaveData.cs`, `ISavableCollection.cs`, `CollectionDataSave.cs`, `GameData.cs`, `GameConfig.cs`, `UserData.cs`, `DataManager.cs`
@@ -96,6 +155,9 @@ Files produced under `Assets/Scripts/Core/GameFoundation/`:
 - `Vibration/` — `HapticFeedback.cs`, `AndroidHapticController.cs`, `iOSHapticController.cs` (cross-platform haptics)
 - Each folder gets its own `.asmdef`.
 
+Files produced under `Assets/Editor/`:
+- `ProjectScaffolder.cs` — first-run scaffolder; uses `[InitializeOnLoad]` + `EditorApplication.delayCall` to create the three starter scenes, register them in Build Settings, import TMP Essential Resources, and import start-packs from `Assets/ImportQueue/`. Runs once on the domain reload triggered by this file copy; re-runnable via **`<ProjectName>/Rebuild Starter Scenes`** menu.
+
 > The `Bootstrap` system is module-driven: `BootstrapConfig` is a serialized
 > list of `ModuleProvider` entries (prefab or ScriptableObject modules) plus
 > `firstSceneName`, `minLoadingTime`, and retry options. `BootstrapPipeline`
@@ -104,18 +166,6 @@ Files produced under `Assets/Scripts/Core/GameFoundation/`:
 > prefab field if not found (singleton-safe). See
 > `Assets/GameFoundation/Bootstrap/SINGLETON_MANAGERS.md` for the pattern.
 
-## Phase 5.5 — Copy start-packs to ImportQueue
-
-Copy every `.unitypackage` file from `.claude/skills/new-project/start-packs/` into `<StoragePath>/Assets/ImportQueue/` (create the folder if needed). Use `cp` with quoted paths to handle filenames with spaces.
-
-```bash
-mkdir -p "<StoragePath>/Assets/ImportQueue"
-cp ".claude/skills/new-project/start-packs/"*.unitypackage "<StoragePath>/Assets/ImportQueue/"
-```
-
-These packages are auto-imported by `ProjectScaffolder` on the first domain reload when Unity opens the project (see Phase 7). Currently bundled:
-- **DOTween Pro** — tweening library
-
 ## Phase 6 — Copy scene-specific UI scripts
 
 Copy `templates/Assets/Scripts/UI/` containing:
@@ -123,9 +173,9 @@ Copy `templates/Assets/Scripts/UI/` containing:
 - `Popups/PopupSettings.cs`
 - `Gameplay/GameplayController.cs`
 
-## Phase 7 — Scene scaffolding (on first Editor launch)
+## Phase 7 — Scene scaffolding (runs on domain reload after Phase 5 compile)
 
-Scenes are NOT authored as raw `.unity` YAML by the skill — shipping YAML with correct MonoScript GUIDs is fragile. Instead, `Assets/Editor/ProjectScaffolder.cs` (copied in Phase 5) uses `[InitializeOnLoad]` + `EditorPrefs` marker to run once on the first domain reload after Unity opens the project. It programmatically:
+Scenes are NOT authored as raw `.unity` YAML by the skill — shipping YAML with correct MonoScript GUIDs is fragile. Instead, `Assets/Editor/ProjectScaffolder.cs` (copied in Phase 5) uses `[InitializeOnLoad]` + `EditorPrefs` marker to run once on the domain reload triggered by Unity compiling the Phase 5 templates. It programmatically:
 
 **Scene creation** (hierarchies verified against the live project via Unity MCP):
 
@@ -190,34 +240,28 @@ A menu `{{PROJECT_NAMESPACE}}/Rebuild Starter Scenes` lets the user re-run scene
 
 ## Phase 8 — Run `/setup-engine`
 
-Execute from `<StoragePath>` directory: `/setup-engine unity <version>` to produce `docs/engine-reference/unity/VERSION.md`, the Unity `.gitignore`, and the standard folder structure (`src/`, `design/`, `tests/`, `production/`).
-
-## Phase 8.5 — Launch Unity Editor automatically
-
-Use the `/unity-local-controller` skill to automatically open the newly created project in Unity Editor:
+Change to the new project directory before invoking:
 
 ```bash
-/unity-local-controller launch <StoragePath>
+cd "<StoragePath>"
+/setup-engine unity <version>
 ```
 
-This command:
-- Detects the Unity version specified in `<StoragePath>/ProjectSettings/ProjectVersion.txt`
-- Finds the matching Unity Editor executable from the local installations
-- Launches Unity Editor with the project path
-- The Editor will start initial package import automatically (may take 5–15 minutes)
+This produces `docs/engine-reference/unity/VERSION.md`, the Unity `.gitignore`, and the standard folder structure (`src/`, `design/`, `tests/`, `production/`) inside `<StoragePath>`.
 
-The skill returns immediately after launching Unity — the import process runs in the background.
+After setup-engine completes, return to the studio root:
 
-Inform the user:
-> "Unity Editor is launching with your new project at `<StoragePath>`. The initial package import will take 5–15 minutes. Please wait until Unity finishes importing (no progress bar visible) before proceeding to validation."
+```bash
+cd "<StudioRoot>"
+```
 
 ## Phase 9 — Unity MCP Validation
 
-After Unity Editor finishes importing, validate the full flow using Unity MCP.
+After Unity finishes compiling the GameFoundation templates (second compilation), validate the full flow using Unity MCP.
 
-**Step 1 — Wait for import completion**
+**Step 1 — Wait for GameFoundation compile**
 Prompt the user:
-> "Has Unity finished the initial package import? (No progress bar visible, Console shows 'Compilation finished'). Let me know when ready."
+> "Has Unity finished compiling the GameFoundation templates? (Console shows 'Compilation finished' with no errors — this is the second compilation, triggered by the Phase 5 file copy.) Let me know when ready."
 
 Once the user confirms, check MCP connectivity by calling `Unity_GetConsoleLogs`. If MCP is not yet connected, guide the user:
 - `Edit > Project Settings > AI > Unity MCP` → click **Start**
@@ -276,11 +320,10 @@ Print a summary:
    Validation: ✅ GameplayScene READY→PLAY confirmed
 
 Next steps:
-  1. Wait for Unity Editor to finish import (5–15 min, already running in background)
-  2. Enable Unity MCP: Edit > Project Settings > AI > Unity MCP → Start
-  3. Open Assets/Scenes/LoadingScene.unity in Unity
-  4. Press Play — watch: Loading → Main → (click Play) → Gameplay (READY → 1s → PLAY)
-  5. Wire up Canvas/Button/Text references in the Inspector if any are missing
+  1. Enable Unity MCP: Edit > Project Settings > AI > Unity MCP → Start
+  2. Open Assets/Scenes/LoadingScene.unity in Unity
+  3. Press Play — watch: Loading → Main → (click Play) → Gameplay (READY → 1s → PLAY)
+  4. Wire up Canvas/Button/Text references in the Inspector if any are missing
 ```
 
 Remind the user:
