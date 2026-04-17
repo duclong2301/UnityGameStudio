@@ -91,6 +91,9 @@ Files produced under `Assets/Scripts/Core/GameFoundation/`:
 - `GameState/` — `GameState.cs`, `GameStateManager.cs`
 - `UI/` — `UILayer.cs`, `IUIAnim.cs`, `UIBase.cs`, `UISceneBase.cs`, `UIPopupBase.cs`, `UILoadingBase.cs`, `UIManager.cs`
 - `Bootstrap/` — `Bootstrap.cs`, `BootstrapConfig.cs`, `BootstrapContext.cs`, `BootstrapPipeline.cs`, `IBootstrapModule.cs`
+- `MusicManager/` — `MusicManager.cs` (DOTween fade, DontDestroyOnLoad singleton, PlayerPrefs volume)
+- `SoundManager/` — `SoundManager.cs`, `SoundFX.cs` (pooled one-shot SFX, AudioMixerGroup support)
+- `Vibration/` — `HapticFeedback.cs`, `AndroidHapticController.cs`, `iOSHapticController.cs` (cross-platform haptics)
 - Each folder gets its own `.asmdef`.
 
 > The `Bootstrap` system is module-driven: `BootstrapConfig` is a serialized
@@ -134,6 +137,9 @@ LoadingCanvas                         (Canvas ScreenSpaceOverlay, 1920×1080, ma
     ├── Background                    (Image, color ≈ 0.05,0.05,0.1)
     └── LoadingLabel                  (TextMeshProUGUI "Loading...", size 48)
 [SystemBootstrap]                     (Bootstrap — drives BootstrapPipeline)
+MusicManager                          (MusicManager + AudioSource, DontDestroyOnLoad)
+SoundManager                          (SoundManager + AudioSource)
+HapticFeedback                        (HapticFeedback — cross-platform vibration)
 ```
 > `[UIManager]` and `DataManager` are **not** authored into the scene by
 > the scaffolder — they are registered as modules in `BootstrapConfig`
@@ -186,13 +192,32 @@ A menu `{{PROJECT_NAMESPACE}}/Rebuild Starter Scenes` lets the user re-run scene
 
 Execute from `<StoragePath>` directory: `/setup-engine unity <version>` to produce `docs/engine-reference/unity/VERSION.md`, the Unity `.gitignore`, and the standard folder structure (`src/`, `design/`, `tests/`, `production/`).
 
+## Phase 8.5 — Launch Unity Editor automatically
+
+Use the `/unity-local-controller` skill to automatically open the newly created project in Unity Editor:
+
+```bash
+/unity-local-controller launch <StoragePath>
+```
+
+This command:
+- Detects the Unity version specified in `<StoragePath>/ProjectSettings/ProjectVersion.txt`
+- Finds the matching Unity Editor executable from the local installations
+- Launches Unity Editor with the project path
+- The Editor will start initial package import automatically (may take 5–15 minutes)
+
+The skill returns immediately after launching Unity — the import process runs in the background.
+
+Inform the user:
+> "Unity Editor is launching with your new project at `<StoragePath>`. The initial package import will take 5–15 minutes. Please wait until Unity finishes importing (no progress bar visible) before proceeding to validation."
+
 ## Phase 9 — Unity MCP Validation
 
-After setup, validate the full flow using Unity MCP. This requires Unity to have the project open.
+After Unity Editor finishes importing, validate the full flow using Unity MCP.
 
-**Step 1 — Wait for project to open**
+**Step 1 — Wait for import completion**
 Prompt the user:
-> "Please open `<StoragePath>` in Unity Hub and wait for the initial package import to complete (may take 5–15 minutes). When Unity finishes importing and shows no progress bar, let me know."
+> "Has Unity finished the initial package import? (No progress bar visible, Console shows 'Compilation finished'). Let me know when ready."
 
 Once the user confirms, check MCP connectivity by calling `Unity_GetConsoleLogs`. If MCP is not yet connected, guide the user:
 - `Edit > Project Settings > AI > Unity MCP` → click **Start**
@@ -247,15 +272,15 @@ Print a summary:
    Pipeline: {URP|HDRP}
    Packages: URP/HDRP + InputSystem + Addressables + TextMeshPro + Cinemachine + Unity MCP
    Start-packs imported: DOTween Pro
+   Unity Editor: Launched automatically
    Validation: ✅ GameplayScene READY→PLAY confirmed
 
 Next steps:
-  1. Open {path} with Unity Hub (if not already open)
-  2. Wait for first-time import (downloads packages, generates Library/)
-  3. Enable Unity MCP: Edit > Project Settings > AI > Unity MCP → Start
-  4. Open Assets/Scenes/LoadingScene.unity
-  5. Press Play — watch: Loading → Main → (click Play) → Gameplay (READY → 1s → PLAY)
-  6. Wire up Canvas/Button/Text references in the Inspector if any are missing
+  1. Wait for Unity Editor to finish import (5–15 min, already running in background)
+  2. Enable Unity MCP: Edit > Project Settings > AI > Unity MCP → Start
+  3. Open Assets/Scenes/LoadingScene.unity in Unity
+  4. Press Play — watch: Loading → Main → (click Play) → Gameplay (READY → 1s → PLAY)
+  5. Wire up Canvas/Button/Text references in the Inspector if any are missing
 ```
 
 Remind the user:

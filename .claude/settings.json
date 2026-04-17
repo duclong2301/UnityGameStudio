@@ -1,9 +1,5 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "statusLine": {
-    "type": "command",
-    "command": "bash .claude/hooks/statusline.sh"
-  },
   "permissions": {
     "allow": [
       "Bash(git status*)",
@@ -15,7 +11,23 @@
       "Bash(dir *)",
       "Bash(python -m json.tool*)",
       "Bash(python -m pytest*)",
-      "Bash(py -m pytest*)"
+      "Bash(py -m pytest*)",
+      "Read(//e/Projects/GameWithAI/SortPuzzle/ProjectSettings/**)",
+      "Bash(cp -r \"e:/Projects/UnityGameStudioAI/.claude\" \"E:/Projects/GameWithAI/SortPuzzle/.claude\")",
+      "Bash(cp -r \"e:/Projects/UnityGameStudioAI/docs\" \"E:/Projects/GameWithAI/SortPuzzle/docs\")",
+      "Bash(cp \"e:/Projects/UnityGameStudioAI/CLAUDE.md\" \"E:/Projects/GameWithAI/SortPuzzle/CLAUDE.md\")",
+      "Read(//e/Projects/GameWithAI/SortPuzzle/Packages/**)",
+      "Bash(cp -r \"e:/Projects/UnityGameStudioAI/.claude/skills/new-project/templates/Assets/GameFoundation\" \"E:/Projects/GameWithAI/SortPuzzle/Assets/GameFoundation\")",
+      "Bash(mkdir -p \"E:/Projects/GameWithAI/SortPuzzle/Assets/Editor\")",
+      "Bash(cp \"e:/Projects/UnityGameStudioAI/.claude/skills/new-project/templates/Assets/Editor/ProjectScaffolder.cs\" \"E:/Projects/GameWithAI/SortPuzzle/Assets/Editor/ProjectScaffolder.cs\")",
+      "Read(//e/Projects/GameWithAI/SortPuzzle/Assets/**)",
+      "Bash(mkdir -p \"E:/Projects/GameWithAI/SortPuzzle/Assets/ImportQueue\")",
+      "Bash(cp \"e:/Projects/UnityGameStudioAI/.claude/skills/new-project/start-packs/\"*.unitypackage \"E:/Projects/GameWithAI/SortPuzzle/Assets/ImportQueue/\")",
+      "Bash(mkdir -p \"E:/Projects/GameWithAI/SortPuzzle/Assets/Scripts/UI/Scenes\")",
+      "Bash(mkdir -p \"E:/Projects/GameWithAI/SortPuzzle/Assets/Scripts/UI/Popups\")",
+      "Bash(mkdir -p \"E:/Projects/GameWithAI/SortPuzzle/Assets/Scripts/Gameplay\")",
+      "Bash(cp \"e:/Projects/UnityGameStudioAI/.claude/skills/new-project/templates/Assets/Scripts/UI/Scenes/\"*.cs \"E:/Projects/GameWithAI/SortPuzzle/Assets/Scripts/UI/Scenes/\")",
+      "Bash(cp \"e:/Projects/UnityGameStudioAI/.claude/skills/new-project/templates/Assets/Scripts/UI/Popups/\"*.cs \"E:/Projects/GameWithAI/SortPuzzle/Assets/Scripts/UI/Popups/\")"
     ],
     "deny": [
       "Bash(rm -rf *)",
@@ -29,6 +41,9 @@
       "Bash(cat *.env*)",
       "Bash(type *.env*)",
       "Read(**/.env*)"
+    ],
+    "additionalDirectories": [
+      "E:\\Projects\\GameWithAI\\SortPuzzle\\Packages"
     ]
   },
   "hooks": {
@@ -114,5 +129,9 @@
         ]
       }
     ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash .claude/hooks/statusline.sh"
   }
 }
