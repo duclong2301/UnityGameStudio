@@ -101,8 +101,8 @@ namespace [{{PROJECT_NAMESPACE}}].EditorTools
             RegisterScenes(loading, main, gameplay);
             AssetDatabase.SaveAssets();
 
-            EditorApplication.delayCall += ImportTMPEssentials;
-            EditorApplication.delayCall += ImportStartPacks;
+           // EditorApplication.delayCall += ImportTMPEssentials;
+            //EditorApplication.delayCall += ImportStartPacks;
 
             EditorPrefs.SetBool(MarkerKey, true);
             Debug.Log("[{{PROJECT_NAMESPACE}}] Starter scenes scaffolded.");
