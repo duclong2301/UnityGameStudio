@@ -1,18 +1,16 @@
-# Session State — 2026-04-17T10:20:06Z
+# Session State — 2026-05-22T06:52:35Z
 
 ## Branch
 main
 
 ## Last 5 Commits
+6404561 Add Phase 1 and Phase 2 documentation, and implement phase1_mapper.py script
+bbceb91 chore: Refactor CLAUDE.md for improved structure and clarity; add new sections on technical preferences, coordination rules, and collaboration protocol
+692b7a2 feat: Update project setup instructions and enhance GameStateManager namespace formatting
 96c4dbd feat: Implement haptic feedback system for Android and iOS platforms
 9acc758 feat: Implement Game Foundation data management and UI structure
-d00e953 Enhance Unity Local Controller and DOTween Integration
-124284d feat: Add detailed instructions for new project setup and Unity MCP integration
-9c099ba feat: Update GameState flow and initialization process in gameplay scripts
 
 ## Modified Files
- M .claude/skills/new-project/SKILL.md
- M .claude/skills/new-project/templates/Assets/GameFoundation/GameState/GameStateManager.cs
  M production/session-state/active.md
 
 ## Notes
