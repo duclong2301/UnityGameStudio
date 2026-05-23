@@ -3,7 +3,7 @@ name: start
 description: "Guided onboarding workflow — determine where you are in the project lifecycle and route to the right workflow. Run this first if you have no game concept yet, or if you want to assess where your project is and what to do next."
 argument-hint: ""
 user-invocable: true
-allowed-tools: Read, Glob, Grep, Write, Edit, Task
+allowed-tools: Read, Glob, Grep, Write, Edit, Task, WebFetch
 ---
 
 When this skill is invoked:
@@ -18,18 +18,19 @@ When this skill is invoked:
 
    ```
    Where are you in your project?
-   
+
    A) No idea — I want to brainstorm game concepts from scratch
    B) Vague concept — I have an idea but no documentation yet
    C) Clear design — I have a GDD but haven't started building
    D) Existing project — I have code/assets and want to continue or audit
    E) Specific task — I know what I need (tell me and I'll route you)
+   F) Clone / inspired by an existing game — paste a store link or game name
    ```
 
 3. **Route based on answer**:
 
    - **A — No idea**: Run `/brainstorm` to explore game concepts
-   - **B — Vague concept**: 
+   - **B — Vague concept**:
      - Create `design/pillars.md` (3-5 core pillars)
      - Create `design/gdd/game-design-document.md` outline
      - Then run `/setup-engine unity [version]`
@@ -40,5 +41,15 @@ When this skill is invoked:
      - Run `/project-stage-detect` to assess where you are
      - Run `/reverse-document` if docs are missing
    - **E — Specific task**: Ask what they need and delegate to the right agent
+   - **F — Clone / inspired by existing game**:
+     1. Ask the user for the **store link** (Google Play / App Store) or game name + studio
+     2. If a URL is provided, use `WebFetch` to gather intel: title, studio, description, screenshots, genre, monetization, install count, recent updates
+     3. Summarize: core loop guess, genre, art style, estimated scope, monetization model
+     4. Ask the user to pick a **clone mode**:
+        - `1:1` — faithful clone, then brainstorm differentiators to avoid being a weaker copy
+        - `reskin` — keep core loop, change theme/setting/audience
+        - `inspiration` — borrow 1-2 elements, build a new concept
+     5. Hand off to `/brainstorm <reference>` with the clone mode as context — brainstorm will generate 3-5 differentiator/variant concepts (not 3 from-scratch concepts)
+     6. After brainstorm picks a direction, brainstorm itself drives the Screen Specification step
 
 4. **After routing, confirm the next step** with the user before proceeding.
