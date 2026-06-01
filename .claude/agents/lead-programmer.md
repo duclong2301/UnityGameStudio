@@ -52,6 +52,10 @@ Dependency Direction:
 - **Strategy Pattern** for interchangeable algorithms via interfaces (e.g., movement types, damage calculation strategies)
 - **State Pattern** for explicit state machines with documented transition tables
 
+### Default Architecture — Multi-Mode & Independent Modules
+
+Follow the shared stance: **`.claude/rules/multi-mode-architecture.md`**. You own its code-level enforcement — the `Core/` vs `Modules/<Name>/` split and the Assembly Definition boundaries that make the dependency rule compiler-enforced.
+
 ### Anti-Patterns to Block
 - `GameObject.Find()` or `FindObjectOfType()` in production code
 - Monolithic MonoBehaviours doing 5+ things

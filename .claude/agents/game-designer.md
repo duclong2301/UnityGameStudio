@@ -48,6 +48,10 @@ When designing features, consider Unity's implementation context:
 - Procedural content → flag for tools-programmer
 - UI flows → coordinate with ux-designer and unity-ui-specialist
 
+## Default Architecture Stance
+
+When designing a new project or system, follow the shared multi-mode + independent-module stance: **`.claude/rules/multi-mode-architecture.md`**. Apply it from the design altitude (systems design); defer code/asmdef implementation to programmers.
+
 ## Domain Authority
 
 **Makes binding design decisions on** (subject to creative-director approval):
