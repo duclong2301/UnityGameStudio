@@ -12,6 +12,7 @@ namespace CubeMergeArena.Gameplay
         [SerializeField] private bool isPlayer;
         [SerializeField] private bool isBot;
         [SerializeField] private bool isDummy;
+        [SerializeField] private CubeSnakeSegment segmentPrefab;
 
         private readonly List<CubeSnakeSegment> segments = new List<CubeSnakeSegment>();
         private readonly List<Vector3> breadcrumbs = new List<Vector3>(512);
@@ -33,6 +34,14 @@ namespace CubeMergeArena.Gameplay
         public Vector3 HeadPosition => IsAlive ? segments[0].transform.position : transform.position;
         public int HeadNumber => IsAlive ? segments[0].Number : 0;
         public float DesiredAngle => desiredAngle;
+
+        public void SetSegmentPrefab(CubeSnakeSegment prefab)
+        {
+            if (prefab != null)
+            {
+                segmentPrefab = prefab;
+            }
+        }
 
         public void Initialize(
             CubeMergeArenaBalance config,
@@ -323,10 +332,25 @@ namespace CubeMergeArena.Gameplay
 
         private void AddSegment(int number, bool isHeadSegment)
         {
+            var segment = CreateSegment(isHeadSegment ? "Head" : "Segment_" + segments.Count);
+            segment.transform.position = transform.position - DirectionFromAngle(currentAngle) * balance.segmentSpacing * segments.Count + Vector3.up * 0.55f;
+            segment.Configure(this, number, isHeadSegment, balance);
+            segment.PlaySpawnAnimation();
+            segments.Add(segment);
+        }
+
+        private CubeSnakeSegment CreateSegment(string segmentName)
+        {
+            if (segmentPrefab != null)
+            {
+                var instance = Instantiate(segmentPrefab, transform);
+                instance.name = segmentName;
+                return instance;
+            }
+
             var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            cube.name = isHeadSegment ? "Head" : "Segment_" + segments.Count;
+            cube.name = segmentName;
             cube.transform.SetParent(transform, true);
-            cube.transform.position = transform.position - DirectionFromAngle(currentAngle) * balance.segmentSpacing * segments.Count + Vector3.up * 0.55f;
 
             var labelObject = new GameObject("NumberLabel");
             labelObject.transform.SetParent(cube.transform, false);
@@ -340,10 +364,7 @@ namespace CubeMergeArena.Gameplay
             label.alignment = TextAlignmentOptions.Center;
             label.fontStyle = FontStyles.Bold;
 
-            var segment = cube.AddComponent<CubeSnakeSegment>();
-            segment.Configure(this, number, isHeadSegment, balance);
-            segment.PlaySpawnAnimation();
-            segments.Add(segment);
+            return cube.AddComponent<CubeSnakeSegment>();
         }
 
         private void ClearSegments()

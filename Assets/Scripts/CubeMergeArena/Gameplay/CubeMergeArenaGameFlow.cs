@@ -1,44 +1,117 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace CubeMergeArena.Gameplay
 {
     public sealed class CubeMergeArenaGameFlow : MonoBehaviour
     {
+        public enum GameState
+        {
+            None,
+            Init,
+            Home,
+            Playing,
+            Win,
+            Settings
+        }
+
         [SerializeField] private CubeMergeArenaRuntimeBootstrap gameplayBootstrap;
         [SerializeField] private GameObject uiHome;
         [SerializeField] private GameObject uiWin;
         [SerializeField] private GameObject popupSetting;
+        [SerializeField] private Button playButton;
+        [SerializeField] private Button settingsButton;
+        [SerializeField] private Button closeSettingsButton;
+        [SerializeField] private Button closeSettingsBottomButton;
+        [SerializeField] private Button homeButton;
+        [SerializeField] private Button claimButton;
         [SerializeField] private bool showHomeOnStart = true;
 
-        private bool gameStarted;
+        [SerializeField] private GameState currentState = GameState.None;
+
+        private GameState stateBeforeSettings = GameState.Home;
+
+        public GameState CurrentState => currentState;
 
         private void Awake()
         {
-            ResolveReferences();
-            BindButtons();
-
-            if (showHomeOnStart)
-            {
-                ShowHome();
-            }
+            currentState = GameState.None;
+            ChangeState(GameState.Init);
         }
 
         public void StartGame()
         {
             if (gameplayBootstrap == null) return;
 
-            gameStarted = true;
-            SetActive(uiHome, false);
-            SetActive(uiWin, false);
-            SetActive(popupSetting, false);
-            gameplayBootstrap.BuildArena();
+            ChangeState(GameState.Playing);
         }
 
         public void ShowHome()
         {
-            gameStarted = false;
+            ChangeState(GameState.Home);
+        }
+
+        public void ShowWin()
+        {
+            if (!IsGameActive()) return;
+
+            ChangeState(GameState.Win);
+        }
+
+        public void OpenSettings()
+        {
+            ChangeState(GameState.Settings);
+        }
+
+        public void CloseSettings()
+        {
+            ChangeState(stateBeforeSettings);
+        }
+
+        public void ChangeState(GameState nextState)
+        {
+            if (currentState == nextState) return;
+
+            var previousState = currentState;
+            currentState = nextState;
+            EnterState(nextState, previousState);
+        }
+
+        private void EnterState(GameState state, GameState previousState)
+        {
+            switch (state)
+            {
+                case GameState.Init:
+                    Init();
+                    break;
+                case GameState.Home:
+                    EnterHome();
+                    break;
+                case GameState.Playing:
+                    EnterPlaying();
+                    break;
+                case GameState.Win:
+                    EnterWin();
+                    break;
+                case GameState.Settings:
+                    EnterSettings(previousState);
+                    break;
+            }
+        }
+
+        private void Init()
+        {
+            ResolveReferences();
+            BindButtons();
+
+            if (showHomeOnStart)
+            {
+                ChangeState(GameState.Home);
+            }
+        }
+
+        private void EnterHome()
+        {
             if (gameplayBootstrap != null)
             {
                 gameplayBootstrap.ClearArena();
@@ -49,94 +122,57 @@ namespace CubeMergeArena.Gameplay
             SetActive(popupSetting, false);
         }
 
-        public void ShowWin()
+        private void EnterPlaying()
         {
-            if (!gameStarted) return;
+            if (gameplayBootstrap == null) return;
 
+            SetActive(uiHome, false);
+            SetActive(uiWin, false);
+            SetActive(popupSetting, false);
+            gameplayBootstrap.BuildArena();
+        }
+
+        private void EnterWin()
+        {
             SetActive(uiHome, false);
             SetActive(uiWin, true);
             SetActive(popupSetting, false);
         }
 
-        public void OpenSettings()
+        private void EnterSettings(GameState previousState)
         {
+            stateBeforeSettings = previousState == GameState.Settings ? stateBeforeSettings : previousState;
             SetActive(popupSetting, true);
         }
 
-        public void CloseSettings()
+        private bool IsGameActive()
         {
-            SetActive(popupSetting, false);
+            return currentState == GameState.Playing
+                || currentState == GameState.Win
+                || currentState == GameState.Settings && stateBeforeSettings == GameState.Playing;
         }
 
         private void ResolveReferences()
         {
             gameplayBootstrap = gameplayBootstrap != null ? gameplayBootstrap : GetComponent<CubeMergeArenaRuntimeBootstrap>();
-            uiHome = uiHome != null ? uiHome : FindSceneObject("CubeMergeArenaCanvas/SafeArea/UIHome");
-            uiWin = uiWin != null ? uiWin : FindSceneObject("CubeMergeArenaCanvas/SafeArea/WinLayer/UIWin");
-            popupSetting = popupSetting != null ? popupSetting : FindSceneObject("CubeMergeArenaCanvas/SafeArea/PopupLayer/PopupSetting");
         }
 
         private void BindButtons()
         {
-            Bind("CubeMergeArenaCanvas/SafeArea/UIHome/PrimaryActionLayer/PlayButton", StartGame);
-            Bind("CubeMergeArenaCanvas/SafeArea/UIHome/HeaderLayer/SettingsButton", OpenSettings);
-            Bind("CubeMergeArenaCanvas/SafeArea/PopupLayer/PopupSetting/Content/CloseButton", CloseSettings);
-            Bind("CubeMergeArenaCanvas/SafeArea/PopupLayer/PopupSetting/Content/CloseBottomButton", CloseSettings);
-            Bind("CubeMergeArenaCanvas/SafeArea/WinLayer/UIWin/ActionsLayer/HomeButton", ShowHome);
-            Bind("CubeMergeArenaCanvas/SafeArea/WinLayer/UIWin/ActionsLayer/ClaimButton", ShowHome);
+            Bind(playButton, StartGame);
+            Bind(settingsButton, OpenSettings);
+            Bind(closeSettingsButton, CloseSettings);
+            Bind(closeSettingsBottomButton, CloseSettings);
+            Bind(homeButton, ShowHome);
+            Bind(claimButton, ShowHome);
         }
 
-        private static void Bind(string path, UnityEngine.Events.UnityAction action)
+        private static void Bind(Button button, UnityEngine.Events.UnityAction action)
         {
-            var target = FindSceneObject(path);
-            if (target == null) return;
-
-            var button = target.GetComponentInChildren<Button>(true);
             if (button == null) return;
 
             button.onClick.RemoveListener(action);
             button.onClick.AddListener(action);
-        }
-
-        private static GameObject FindSceneObject(string path)
-        {
-            var parts = path.Split('/');
-            if (parts.Length == 0) return null;
-
-            var scene = SceneManager.GetActiveScene();
-            var roots = scene.GetRootGameObjects();
-            for (var i = 0; i < roots.Length; i++)
-            {
-                if (roots[i].name != parts[0]) continue;
-
-                var current = roots[i].transform;
-                for (var p = 1; p < parts.Length; p++)
-                {
-                    current = FindDirectChild(current, parts[p]);
-                    if (current == null) break;
-                }
-
-                if (current != null)
-                {
-                    return current.gameObject;
-                }
-            }
-
-            return null;
-        }
-
-        private static Transform FindDirectChild(Transform parent, string childName)
-        {
-            for (var i = 0; i < parent.childCount; i++)
-            {
-                var child = parent.GetChild(i);
-                if (child.name == childName)
-                {
-                    return child;
-                }
-            }
-
-            return null;
         }
 
         private static void SetActive(GameObject target, bool active)

@@ -8,6 +8,7 @@ namespace CubeMergeArena.Gameplay
     public sealed class CubeMergeArenaSpawner : MonoBehaviour
     {
         [SerializeField] private CubeMergeArenaBalance balance;
+        [SerializeField] private CubeMergeArenaPickup pickupPrefab;
 
         private readonly List<CubeMergeArenaPickup> pickups = new List<CubeMergeArenaPickup>();
         private float refillTimer;
@@ -16,7 +17,17 @@ namespace CubeMergeArena.Gameplay
 
         public void Initialize(CubeMergeArenaBalance config)
         {
+            Initialize(config, pickupPrefab);
+        }
+
+        public void Initialize(CubeMergeArenaBalance config, CubeMergeArenaPickup pickupTemplate)
+        {
             balance = config;
+            if (pickupTemplate != null)
+            {
+                pickupPrefab = pickupTemplate;
+            }
+
             refillTimer = balance.freeBlockRefillCooldown;
             boosterTimer = balance.generateBoosterTime;
 
@@ -87,6 +98,13 @@ namespace CubeMergeArena.Gameplay
 
         private CubeMergeArenaPickup CreatePickup(string objectName, Vector3 position)
         {
+            if (pickupPrefab != null)
+            {
+                var instance = Instantiate(pickupPrefab, position, Quaternion.identity, transform);
+                instance.name = objectName;
+                return instance;
+            }
+
             var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
             cube.name = objectName;
             cube.transform.SetParent(transform, true);

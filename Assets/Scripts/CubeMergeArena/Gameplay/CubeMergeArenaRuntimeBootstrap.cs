@@ -7,6 +7,14 @@ namespace CubeMergeArena.Gameplay
         [SerializeField] private CubeMergeArenaBalance balance;
         [SerializeField] private bool buildOnStart = true;
         [SerializeField] private bool clearExistingArenaOnBuild = true;
+        [SerializeField] private Transform runtimeContentRoot;
+        [SerializeField] private GameObject ground;
+        [SerializeField] private Camera arenaCamera;
+        [SerializeField] private Light arenaLight;
+        [SerializeField] private CubeSnake snakePrefab;
+        [SerializeField] private CubeSnakeSegment segmentPrefab;
+        [SerializeField] private CubeMergeArenaSpawner spawnerPrefab;
+        [SerializeField] private CubeMergeArenaPickup pickupPrefab;
 
         private static readonly Vector2[] AiSpawnPositions =
         {
@@ -19,6 +27,29 @@ namespace CubeMergeArena.Gameplay
 
         public bool IsBuilt { get; private set; }
 
+        private Transform RuntimeContentRoot
+        {
+            get
+            {
+                if (runtimeContentRoot != null)
+                {
+                    return runtimeContentRoot;
+                }
+
+                var existing = transform.Find("RuntimeContent");
+                if (existing != null)
+                {
+                    runtimeContentRoot = existing;
+                    return runtimeContentRoot;
+                }
+
+                var root = new GameObject("RuntimeContent");
+                root.transform.SetParent(transform, false);
+                runtimeContentRoot = root.transform;
+                return runtimeContentRoot;
+            }
+        }
+
         private void Start()
         {
             if (buildOnStart)
@@ -30,6 +61,8 @@ namespace CubeMergeArena.Gameplay
         [ContextMenu("Build Arena")]
         public void BuildArena()
         {
+            ResolveSceneReferences();
+
             if (clearExistingArenaOnBuild)
             {
                 ClearArena();
@@ -51,9 +84,10 @@ namespace CubeMergeArena.Gameplay
         [ContextMenu("Clear Arena")]
         public void ClearArena()
         {
-            for (var i = transform.childCount - 1; i >= 0; i--)
+            var root = RuntimeContentRoot;
+            for (var i = root.childCount - 1; i >= 0; i--)
             {
-                var child = transform.GetChild(i).gameObject;
+                var child = root.GetChild(i).gameObject;
                 if (Application.isPlaying)
                 {
                     Destroy(child);
@@ -69,46 +103,35 @@ namespace CubeMergeArena.Gameplay
 
         private void CreateEnvironment(CubeSnake player)
         {
-            if (GameObject.Find("CubeMergeArena_Ground") == null)
+            if (ground != null)
             {
-                var ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                ground.name = "CubeMergeArena_Ground";
                 ground.transform.position = new Vector3(0f, -0.05f, 0f);
                 ground.transform.localScale = new Vector3(balance.mapWidth, 0.1f, balance.mapHeight);
-                var renderer = ground.GetComponent<Renderer>();
-                renderer.sharedMaterial = new Material(Shader.Find("Standard"))
-                {
-                    color = new Color32(0, 94, 210, 255)
-                };
             }
 
-            if (FindFirstObjectByType<Light>() == null)
+            if (arenaLight != null)
             {
-                var lightObject = new GameObject("Directional Light");
-                var light = lightObject.AddComponent<Light>();
-                light.type = LightType.Directional;
-                light.intensity = 1.2f;
-                lightObject.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+                arenaLight.type = LightType.Directional;
+                arenaLight.intensity = 1.2f;
+                arenaLight.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
             }
 
-            var camera = Camera.main;
-            if (camera == null)
+            if (arenaCamera == null)
             {
-                var cameraObject = new GameObject("Main Camera");
-                cameraObject.tag = "MainCamera";
-                camera = cameraObject.AddComponent<Camera>();
+                Debug.LogWarning("CubeMergeArenaRuntimeBootstrap is missing an arena camera reference.", this);
+                return;
             }
 
-            camera.transform.position = new Vector3(0f, 62f, -48f);
-            camera.transform.rotation = Quaternion.Euler(58f, 0f, 0f);
-            camera.fieldOfView = 45f;
-            camera.clearFlags = CameraClearFlags.SolidColor;
-            camera.backgroundColor = new Color32(0, 45, 140, 255);
+            arenaCamera.transform.position = new Vector3(0f, 62f, -48f);
+            arenaCamera.transform.rotation = Quaternion.Euler(58f, 0f, 0f);
+            arenaCamera.fieldOfView = 45f;
+            arenaCamera.clearFlags = CameraClearFlags.SolidColor;
+            arenaCamera.backgroundColor = new Color32(0, 45, 140, 255);
 
-            var follow = camera.GetComponent<CubeMergeArenaCameraFollow>();
+            var follow = arenaCamera.GetComponent<CubeMergeArenaCameraFollow>();
             if (follow == null)
             {
-                follow = camera.gameObject.AddComponent<CubeMergeArenaCameraFollow>();
+                follow = arenaCamera.gameObject.AddComponent<CubeMergeArenaCameraFollow>();
             }
 
             follow.Initialize(player);
@@ -156,19 +179,62 @@ namespace CubeMergeArena.Gameplay
             bool bot,
             bool dummy)
         {
-            var snakeObject = new GameObject(objectName);
-            snakeObject.transform.SetParent(transform, true);
-            var snake = snakeObject.AddComponent<CubeSnake>();
+            CubeSnake snake;
+            if (snakePrefab != null)
+            {
+                snake = Instantiate(snakePrefab, RuntimeContentRoot);
+                snake.name = objectName;
+            }
+            else
+            {
+                var snakeObject = new GameObject(objectName);
+                snakeObject.transform.SetParent(RuntimeContentRoot, true);
+                snake = snakeObject.AddComponent<CubeSnake>();
+            }
+
+            snake.SetSegmentPrefab(segmentPrefab);
             snake.Initialize(balance, numbers, position, angle, player, bot, dummy);
             return snake;
         }
 
         private void CreateSpawner()
         {
-            var spawnerObject = new GameObject("PickupSpawner");
-            spawnerObject.transform.SetParent(transform, false);
-            var spawner = spawnerObject.AddComponent<CubeMergeArenaSpawner>();
-            spawner.Initialize(balance);
+            CubeMergeArenaSpawner spawner;
+            if (spawnerPrefab != null)
+            {
+                spawner = Instantiate(spawnerPrefab, RuntimeContentRoot);
+                spawner.name = "PickupSpawner";
+            }
+            else
+            {
+                var spawnerObject = new GameObject("PickupSpawner");
+                spawnerObject.transform.SetParent(RuntimeContentRoot, false);
+                spawner = spawnerObject.AddComponent<CubeMergeArenaSpawner>();
+            }
+
+            spawner.Initialize(balance, pickupPrefab);
+        }
+
+        private void ResolveSceneReferences()
+        {
+            if (ground == null)
+            {
+                var groundTransform = transform.Find("ArenaGround");
+                if (groundTransform != null)
+                {
+                    ground = groundTransform.gameObject;
+                }
+            }
+
+            if (arenaCamera == null)
+            {
+                arenaCamera = GetComponentInChildren<Camera>(true);
+            }
+
+            if (arenaLight == null)
+            {
+                arenaLight = GetComponentInChildren<Light>(true);
+            }
         }
 
         private Vector3 GetRandomSpawnPosition()
